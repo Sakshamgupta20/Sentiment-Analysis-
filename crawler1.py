@@ -1,7 +1,6 @@
-
 # coding: utf-8
 
-# In[ ]:
+# In[1]:
 
 
 import urllib.request
@@ -35,6 +34,7 @@ while i<=int(in_url):
 vis=open('visited.txt','w')
 invert=open('inverted.txt','w')
 invert_count=open('inverted_count.txt','w')
+idf=open('idf.txt','w')
 
 parsed_uri = urlparse(weblink)
 global baseurl
@@ -167,12 +167,21 @@ for key,va in wordCount.items():
     invert_count.write(fin)
     invert_count.write("\n")
     
-
-    
+for key,va in wordDict.items():
+    ids=len(va)/len(visited)
+    value=math.log2(1/ids)
+    key=key.encode("utf-8")
+    idf.write(str(key) + " => " + str(value))
+    idf.write("\n")
     
 vis.close()
 invert.close()
 invert_count.close()
+idf.close()
+
+    
+
+
 
 
         
