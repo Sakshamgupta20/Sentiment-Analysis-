@@ -1,189 +1,196 @@
+
 # coding: utf-8
 
-# In[1]:
+# In[3]:
 
 
 import urllib.request
 from urllib.parse import urlparse
 import bs4
-import queue
-import math
 
-import io
-from nltk.corpus import stopwords
-from nltk.tokenize import word_tokenize
-import nltk
-import string
+count=0
+wrongurl="wrong"
+titles=[]
+urls=[]
+products_dict={}
+user_choice=input("Enter Your Choice: ")
+user_search=input("Enter Your Topic: ")
+if user_choice=="flipkart":
+    if user_search!="":
+        user_search=urllib.parse.quote(user_search)
+    user_search="https://www.flipkart.com/search?q="+user_search
+else:
+    user_search=urllib.parse.quote(user_search)
+    user_search="https://www.amazon.in/s/ref=nb_sb_noss?url=search-alias%3Daps&field-keywords="+user_search+"&ie=UTF8&qid=1541145831&lo=none"
+review_urls=set()
+review_url=""
+reviews=open("reviews.txt","w",encoding="utf-8")
 
-nltk.download('stopwords')
-nltk.download('punkt')
-
-print("Please enter the URL: ")
-weblink = input()
-
-
-in_url=input("How many tokens you want to search: ")
-i=1
-url_tokens=[]
-while i<=int(in_url):
-    y=input("Enter {} token: ".format(i))
-    url_tokens.append(y)
-    i=i+1
-    
-    
-vis=open('visited.txt','w')
-invert=open('inverted.txt','w')
-invert_count=open('inverted_count.txt','w')
-idf=open('idf.txt','w')
-
-parsed_uri = urlparse(weblink)
-global baseurl
-baseurl ='{uri.scheme}://{uri.netloc}'.format(uri=parsed_uri)
-url_on=baseurl
-nonvisited=queue.Queue()
-visited=[]
-needcmp=[]
-wordDict = {}
-wordCount = {}
-
-wrongurl="bad request"
 def find_soup(url):
     try:
-        sauce=urllib.request.urlopen(url)
-        soup=bs4.BeautifulSoup(sauce,'lxml')
+        opener = urllib.request.build_opener()
+        opener.addheaders = [('User-agent', 'Mozilla/5.0')]
+        response = opener.open(url)
+        soup=bs4.BeautifulSoup(response,'lxml')
         #visited.append(url)
         print(url + "   GOOD REQUEST")
         return(soup)
     except:
         print(url + "   BAD REQUEST")
-        return(wrongurl)
-
-def find_urls(soup):
-    needcmp1=[]
-    try:
-        if soup != wrongurl:
-            for link in soup.findAll('a'):
-                url=str(link.get('href'))
-                if url.startswith('http'):
-                        needcmp1.append(url)
-                elif url.startswith('/'):
-                        url = baseurl + url
-                        needcmp1.append(url)
-            return needcmp1
-        else:
-            return(wrongurl)
-        
-    except:
-        print("Error in Getting Links")
-        
-def compare():
-    count=0
-    try:
-        if needcmp != wrongurl:
-            for cmpurl in needcmp:
-                if cmpurl not in visited and cmpurl not in nonvisited.queue:
-                    nonvisited.put(cmpurl)
-                else:
-                    count=count+1
-            visited.append(url_on)
-            vis.write(url_on)
-            vis.write("\n")
-            print("Compare Successful")
-    except:
-        print("Compare Error")
-        
-def tokens(soup):
-    try:
-        if soup !=wrongurl:
-            words_filtered = ""
-            word_dict={}
-            for paragraph in soup.findAll('p'):
-                stop_words=set(stopwords.words('english')) | set(string.punctuation)
-                text=paragraph.text
-                text=text.lower()
-                text_tokens = word_tokenize(text)
-                for w in text_tokens:
-                    if w not in stop_words:
-                        words_filtered=words_filtered + " " + w
-            word_dict[url_on]=words_filtered
-            return(word_dict)
-        else:
-            return(wrongurl)
-    except:
-        print("Tokenization Failed")
-        
-def InvertedIndex(inputDict):
-    if(inputDict != wrongurl):
-        for wordKey, wordText in inputDict.items():
-            for word in wordText.lower().split():
-                wordCount[word] = wordCount.get(word,0)+1
-                if wordDict.get(word,False):
-                    if wordKey not in wordDict[word]:
-                        wordDict[word].append(wordKey)
-                else:
-                    wordDict[word] = [wordKey]
-        #print(wordDict)
-        #print(wordCount)
+        return(wrongurl)    
+def find_vertical_title(soup):                             #Getting vertical title
+    if soup!=wrongurl:
+        data= soup.findAll('div',{"class":"_3wU53n"})
+        for i in data:
+            titles.append(i.text)
     else:
-        print("ERROR")
+        return(wrongurl)
+        
+def find_vertical_urls(soup):                               #Getting vertical urls
+    if soup!=wrongurl:
+        data= soup.findAll('a',{"class":"_31qSD5"})
+        for i in data:
+            url="https://www.flipkart.com"+i.get('href')
+            urls.append(url)
+    else:
+        return(wrongurl)
     
-nonvisited.put(url_on)
-#print(wordDict)
-#print(wordCount)
+def Making_Dictonary(titles,urls): 
+    for i in range(len(titles)):                                
+        products_dict[titles[i]]=urls[i]
+        
+def find_horizontal_dictonary(soup):                    #Getting horizontal title,url and making dictonary
+    if soup!=wrongurl:
+        data= soup.findAll('a',{"class":"_2cLu-l"})
+        for i in data:
+            products_dict[i.get('title')]="https://www.flipkart.com"+i.get('href')
+    else: 
+        return(wrongurl)
+    
+def find_horizontal_dictonary_amazon(soup):              #Getting horizontal title,url and making dictonary
+    if soup!=wrongurl:
+        data= soup.findAll('a',{"class":"a-link-normal s-access-detail-page s-color-twister-title-link a-text-normal"})
+        for i in data:
+            products_dict[i.get('title')]=i.get('href')
+    else: 
+        return(wrongurl)
+    
+def find_urls_flipkart(soup):                                    #Finding Links of Review Urls
+    if soup!=wrongurl:
+        data= soup.findAll('a',{"class":"_33m_Yg"})
+        for link in data:
+            review_urls.add(link.get('href'))
+    else:
+        return(wrongurl)
+def find_reviews_flipkart(soup):                                 #Finding Reviews
+    global count
+    if soup!=wrongurl:
+        content = soup.findAll("div", class_="qwjRop")
+        for j in content:
+            for i in j.find('span'):
+                i.replace_with('')
+            print(j.text)
+            count=count+1
+            reviews.write(j.text)
+            reviews.write("\n")
+    else:
+        return(wrongurl)
+    
+def find_urls_amazon(soup):                                    #Finding Links of Review Urls
+    if soup!=wrongurl:
+        data= soup.findAll('li',{"class":"page-button"})
+        for link in data:
+            ii=link.findAll('a')
+            for  i in ii:
+                review_urls.add(i.get('href'))
+    else:
+        return(wrongurl)
+def find_reviews_amazon(soup):                                 #Finding Reviews
+    global count
+    if soup!=wrongurl:
+        content = soup.findAll("span", class_="a-size-base review-text")
+        for i in content:
+            count=count+1
+            print(i.text)
+            re=str(i.text)
+            reviews.write(re)
+            reviews.write("\n")
+    else:
+        return(wrongurl)
+    
+if user_choice== "flipkart":
+    
+    x=find_soup(user_search)
 
-i=len(visited)
-while i<5:
-    url_on=nonvisited.get()
-    soup=find_soup(url_on)
-    token_dict=tokens(soup)
-    if token_dict != wrongurl:
-        for key,va in token_dict.items():
-            if any(word in va for word in url_tokens):
-                needcmp=find_urls(soup)
-                compare()
-                print("Token Found")
-                InvertedIndex(token_dict)
+    find_vertical_title(x)
+    if titles:
+        find_vertical_urls(x)
+        Making_Dictonary(titles,urls)
+    else:
+        find_horizontal_dictonary(x)
+
+    for key,val in products_dict.items():
+        print(key)
+
+    if bool(products_dict):
+
+        Product_url=input("Enter Your Search: ")
+
+        Product_url=products_dict[Product_url]
+
+        x=find_soup(Product_url)                        #finding read more url
+        for i in x.findAll('div',{"class":"col _39LH-M"}):
+            y=i.findAll('a')
+            for ii in y:
+                review_url=ii.get('href')
+                
+        if "/product-reviews/" in review_url:           #Finding Links of Review Urls
+            review_url="https://www.flipkart.com"+review_url
+            find_urls_flipkart(find_soup(review_url))
+            if review_urls:
+                for url in review_urls:                           #finding reviews through review urls
+                    url="https://www.flipkart.com"+url
+                    find_reviews_flipkart(find_soup(url))
             else:
-                print("Token Not Found In this url")
-    print("VISITED  " +str(len(visited)))
-    print("NON VISITED  " + str(nonvisited.qsize()))
-    i = len(visited)
-    
-    
-    
+                find_reviews_flipkart(find_soup(review_url))
+        else:
+            find_reviews_flipkart(find_soup(Product_url))
 
-for key,va in wordDict.items():
-    st=""
-    for vi in va:
-        st=st+str(vi)+","
-    key=key.encode("utf-8")
-    fin=str(key) + " => " + st  
-    invert.write(fin)
-    invert.write("\n")
+    else:
+        print("No Results Found")
+
+else:
+    x=find_soup(user_search)
+    find_horizontal_dictonary_amazon(x)
+    for key,val in products_dict.items():
+        print(key)
     
-for key,va in wordCount.items():
-    key=key.encode("utf-8")
-    fin=str(key) + " => " + str(va)
-    invert_count.write(fin)
-    invert_count.write("\n")
-    
-for key,va in wordDict.items():
-    ids=len(va)/len(visited)
-    value=math.log2(1/ids)
-    key=key.encode("utf-8")
-    idf.write(str(key) + " => " + str(value))
-    idf.write("\n")
-    
-vis.close()
-invert.close()
-invert_count.close()
-idf.close()
+    if bool(products_dict):
 
-    
+        Product_url=input("Enter Your Search: ")
 
+        Product_url=products_dict[Product_url]
 
-
-
+        x=find_soup(Product_url)                        #finding read more url
+        for i in x.findAll('a',{"class":"a-link-emphasis a-text-bold"}):
+            review_url=i.get('href')
+        if "=all_reviews" in review_url:
+            review_url="https://www.amazon.in"+review_url    
+            find_urls_amazon(find_soup(review_url))
         
-        
+            if review_urls:
+                for url in review_urls:                           #finding reviews through review urls
+                    url="https://www.amazon.in"+url
+                    find_reviews_amazon(find_soup(url))
+        else:
+            print("No Reviews Yet")
+    else:
+        print("No Results Found")
+
+print(count)
+if count >0:
+    print("Done")
+else:
+    print("No Reviews found")
+reviews.close()
 
